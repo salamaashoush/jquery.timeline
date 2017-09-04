@@ -16,7 +16,7 @@
 
   var methods = {
     init : function( options ) {
-      
+
       // Default settings
       var settings = $.extend( {
         type            : "bar", // View type of timeline event is either "bar" or "point"
@@ -32,6 +32,7 @@
           years         : "Y", 
           months        : "F", 
           days          : "j",
+          hour          : "H",
           meta          : "Y/m/d H:i", // start datetime in meta of Event Detail; or "g:i A, D F j, Y"
           metato        : "" // end datetime in meta of Event Detail; default is same to meta
         },
@@ -70,6 +71,7 @@
               "datetime-format-year"  : settings.datetimeFormat.year || 'Y',
               "datetime-format-month" : settings.datetimeFormat.month || 'M Y',
               "datetime-format-day"   : settings.datetimeFormat.day || 'D, j M',
+              "datetime-format-hour"  : settings.datetimeFormat.hour || 'H',
               "datetime-format-years" : settings.datetimeFormat.years || 'Y',
               "datetime-format-months": settings.datetimeFormat.months || 'F',
               "datetime-format-days"  : settings.datetimeFormat.days || 'j',
@@ -134,8 +136,11 @@
             case 'days':
               currentDate = currentDt.getFullYear() +'/'+ (currentDt.getMonth() + 1) +'/'+ currentDt.getDate() +' 00:00:00';
               break;
+            case 'hours':
+              currentDate = currentDt.getFullYear() +'/'+ (currentDt.getMonth() + 1) +'/'+ currentDt.getDate() + ' ' + currentDt.getHours() +':00:00';
+              break;
             default:
-              currentDate = currentDt.getFullYear() +'/'+ (currentDt.getMonth() + 1) +'/'+ currentDt.getDate() +' '+ currentDate.getHours() +':00:00';
+              currentDate = currentDt.getFullYear() +'/'+ (currentDt.getMonth() + 1) +'/'+ currentDt.getDate() +' '+ currentDate.getHours() + ':' + currentDate.getMinutes() +':00';
           }
           $this.data('timeline').timeline.attr( 'actual-start-datetime', currentDate );
           
@@ -249,6 +254,9 @@
           if ( typeof options.datetimeFormat.day != undefined ) {
             data.timeline.attr( 'datetime-format-day', options.datetimeFormat.day );
           }
+          if ( typeof options.datetimeFormat.day != undefined ) {
+            data.timeline.attr( 'datetime-format-hour', options.datetimeFormat.hour );
+          }
           if ( typeof options.datetimeFormat.years != undefined ) {
             data.timeline.attr( 'datetime-format-years', options.datetimeFormat.years );
           }
@@ -344,8 +352,11 @@
           case 'days':
             currentDate = currentDt.getFullYear() +'/'+ (currentDt.getMonth() + 1) +'/'+ currentDt.getDate() +' 00:00:00';
             break;
-          default:
+          case 'hours':
             currentDate = currentDt.getFullYear() +'/'+ (currentDt.getMonth() + 1) +'/'+ currentDt.getDate() +' '+ currentDate.getHours() +':00:00';
+            break;
+          default:
+            currentDate = currentDt.getFullYear() +'/'+ (currentDt.getMonth() + 1) +'/'+ currentDt.getDate() +' '+ currentDate.getHours() + ':' + currentDate.getMinutes() +':00';
         }
         data.timeline.attr( 'actual-start-datetime', currentDate );
 
@@ -548,7 +559,8 @@
           day          : data.timeline.attr('datetime-format-day'), // for headline
           years        : data.timeline.attr('datetime-format-years'), // for scale
           months       : data.timeline.attr('datetime-format-months'), // for scale
-          days         : data.timeline.attr('datetime-format-days') // for scale
+          days         : data.timeline.attr('datetime-format-days'), // for scale
+          hours        : data.timeline.attr('datetime-format-hours') // for scale
         },
         minuteInterval : Number( data.timeline.attr('minute-interval') ),
         zerofillYear   : Number( data.timeline.attr('zerofill-year') ) == 1 ? true : false,
@@ -790,6 +802,12 @@
             "medium_cols": 24,
             "small_scale": "minutes",
             "small_cols": Number( data.timeline.attr('min-grid-per') ) // retriveDaysGrid( data.timeline.attr('minute-interval'), data.timeline.attr('min-grid-per') )
+          },
+          hours   : {
+            "medium_scale": "minutes",
+            "medium_cols": 60,
+            "small_scale": "seconds",
+            "small_cols": Number( data.timeline.attr('min-grid-per') ) // retriveDaysGrid( data.timeline.attr('minute-interval'), data.timeline.attr('min-grid-per') )
           }
         },
         topScale = data.timeline.attr('scale'),
@@ -822,8 +840,13 @@
       endDt.setMonth( endDt.getMonth() + Number( data.timeline.attr('range') ) );
       _tmpDt = endDt.getTime();
       endDt.setTime( _tmpDt - 1 );
-    } else {
+    } else
+    if ( data.timeline.attr('scale') === 'days' ) {
       endDt.setDate( endDt.getDate() + Number( data.timeline.attr('range') ) );
+      _tmpDt = endDt.getTime();
+      endDt.setTime( _tmpDt - 1 );
+    } else {
+      endDt.setHours( endDt.getHours() + Number( data.timeline.attr('range') ) );
       _tmpDt = endDt.getTime();
       endDt.setTime( _tmpDt - 1 );
     }
@@ -832,6 +855,11 @@
     if ( midScale === 'days' && Number( data.timeline.attr('range') ) > 1 ) {
       for ( i = 1; i < Number( data.timeline.attr('range') ); i++ ) {
          scaleMediumCols.push( new Date( startDt.getFullYear(), startDt.getMonth() + 1 + i, 0 ).getDate() );
+      }
+    } else
+    if( midScale === 'hours' && Number( data.timeline.attr('range') ) > 1 ){
+      for ( i = 1; i < Number( data.timeline.attr('range') ); i++ ) {
+        scaleMediumCols.push( new Date( startDt.getFullYear(), startDt.getMonth() + 1, startDt.getDate() + i ).getHours() );
       }
     } else {
       for ( i = 1; i < Number( data.timeline.attr('range') ); i++ ) {
@@ -869,6 +897,10 @@
         case "days":
           fromDate = data.timeline.attr('datetime-prefix') + formatDate( data.timeline.attr('datetime-format-day'), startDt );
           toDate   = data.timeline.attr('datetime-prefix') + formatDate( data.timeline.attr('datetime-format-day'), endDt );
+          break;
+        case "hours":
+          fromDate = data.timeline.attr('datetime-prefix') + formatDate( data.timeline.attr('datetime-format-hour'), startDt );
+          toDate   = data.timeline.attr('datetime-prefix') + formatDate( data.timeline.attr('datetime-format-hour'), endDt );
           break;
       }
       tlTitle = '<span class="timeline-from-date">' + fromDate + '</span><span class="timeline-to-date">' + toDate + '</span>';
@@ -911,6 +943,10 @@
           tmpDate.setDate( tmpDate.getDate() + i );
           label = formatDate( data.timeline.attr('datetime-format-days'), tmpDate );
           break;
+        case 'hours':
+          tmpDate.setDate( tmpDate.getHours() + i );
+          label = formatDate( data.timeline.attr('datetime-format-hours'), tmpDate );
+          break;
       }
       topLevelRow += label + '</th>';
     }
@@ -932,8 +968,13 @@
           break;
         case 'hours':
           resMod = i % scaleSet[topScale]['medium_cols'];
-          label = mediumCellSize < 40 ? '' : resMod + ':00';
+          label = mediumCellSize < 40 ? '' : resMod + ':00:00';
           cellDt = tmpDate.setTime( tmpDate.getTime() + i * 3600000 );
+          break;
+        case 'minutes':
+          resMod = i % scaleSet[topScale]['medium_cols'];
+          label = mediumCellSize < 40 ? '' : resMod + ':00';
+          cellDt = tmpDate.setTime( tmpDate.getTime() + i * 60000);
           break;
       }
       mediumLevelRow += '<th colspan="' + scaleSet[topScale]['small_cols'] + '" class="scale-medium scale-' + midScale + '" data-cell-datetime="' + cellDt + '">';
@@ -1518,6 +1559,7 @@
         tlWidth     = minGridSize * tlTotalCols - 1,
         msDay       = 24 * 60 * 60 * 1000,
         msHour      = 60 * 60 * 1000,
+        msMinute    = 60 * 1000,
         gridSize    = minGridPer * minGridSize,
         _tmpDt, posX;
     // Set end datetime
@@ -1537,6 +1579,11 @@
         _tmpDt = endDt.getTime();
         endDt.setTime( _tmpDt - 1 );
         break;
+      case 'hours':
+        endDt = new Date( endDt.setHours( endDt.getHours() + range ) );
+        _tmpDt = endDt.getTime();
+        endDt.setTime( _tmpDt - 1 );
+        break;
     }
     if ( isBetweenTo( targetDt, startDt, endDt ) ) {
       switch ( scale ) {
@@ -1548,6 +1595,9 @@
           break;
         case 'days':
           posX = Math.floor( ( targetDt - startDt ) / msHour * gridSize );
+          break;
+        case 'hours':
+          posX = Math.floor( ( targetDt - startDt ) / msMinute * gridSize );
           break;
       }
       return posX;
